@@ -1,6 +1,7 @@
 __author__ = 'MaxRobinson'
 import random
 import cPickle
+import json
 import os
 from Player import *
 from Constants import *
@@ -46,7 +47,7 @@ class AIPlayer(Player):
 
         self.alphaExponentNumber = -0.2
         self.gameNumber = 1
-        self.SaveWindow = 25  # every this many games, save to file.
+        self.SaveWindow = 50  # every this many games, save to file.
 
         self.gamma = .8
         self.alpha = .999
@@ -62,15 +63,15 @@ class AIPlayer(Player):
         self.stateUtilityMemory = {}
 
         # If we have an existing memory, Load it!!! If not don't do anything.
-        if(os.path.isfile("../robinsom16_TD-Learning.txt")):
+        if(os.path.isfile("robinsom16_TD-Learning.txt")):
             self.readMemory()
 
         # If we have an alpha value, Load it!!! If not don't do anything.
-        if(os.path.isfile("../robinsom16_TD-AlphaValue.txt")):
+        if(os.path.isfile("robinsom16_TD-AlphaValue.txt")):
             self.readAlphaValue()
 
         # If we have an alpha value, Load it!!! If not don't do anything.
-        if(os.path.isfile("../robinsom16_TD-EpsilonValue.txt")):
+        if(os.path.isfile("robinsom16_TD-EpsilonValue.txt")):
             self.readEpsilonValue()
 
     ##
@@ -175,7 +176,7 @@ class AIPlayer(Player):
         compressedCurState = self.consolidateState(currentState)
 
         #current State Hash
-        stateHash = compressedCurState.__hash__()
+        stateHash = str(compressedCurState.__hash__())
 
         role = random.random()
         # if less than epsilon, explore via random move
@@ -184,7 +185,7 @@ class AIPlayer(Player):
         elif(move == None):
             maxUtil = 0
             for posMove in moves:
-                key = posMove.__hash__()
+                key = str(posMove.__hash__())
 
                 #if that state is in the dictionary
                 if key in self.stateUtilityMemory[stateHash]:
@@ -232,8 +233,8 @@ class AIPlayer(Player):
 
         # this happens on the win condition, if there is no win state already we need to add it.
         # this is a safe guard in case something doesn't get added properly
-        if compressedState.__hash__() not in self.stateUtilityMemory:
-            self.stateUtilityMemory[compressedState.__hash__()] = {}
+        if str(compressedState.__hash__()) not in self.stateUtilityMemory:
+            self.stateUtilityMemory[str(compressedState.__hash__())] = {}
 
         # if first move of the game, the last move was an end move.
         if self.PreviousMove is None:
@@ -246,8 +247,8 @@ class AIPlayer(Player):
             self.PreviousState = compressedState
             self.PreviousMove = Move(END, None, None)
 
-            prevStateHash = self.PreviousState.__hash__()
-            prevMoveHash = self.PreviousMove.__hash__()
+            prevStateHash = str(self.PreviousState.__hash__())
+            prevMoveHash = str(self.PreviousMove.__hash__())
 
             if prevStateHash not in self.stateUtilityMemory:
                 self.stateUtilityMemory[prevStateHash] = {}
@@ -264,8 +265,8 @@ class AIPlayer(Player):
 
         else:
 
-            prevStateHash = self.PreviousState.__hash__()
-            prevMoveHash = self.PreviousMove.__hash__()
+            prevStateHash = str(self.PreviousState.__hash__())
+            prevMoveHash = str(self.PreviousMove.__hash__())
 
             if prevMoveHash not in self.stateUtilityMemory[prevStateHash]:
                 self.stateUtilityMemory[prevStateHash][prevMoveHash] = \
@@ -278,11 +279,11 @@ class AIPlayer(Player):
                     previousQValue
 
 
-        previousValues = self.stateUtilityMemory[self.PreviousState.__hash__()][self.PreviousMove.__hash__()]
+        previousValues = self.stateUtilityMemory[str(self.PreviousState.__hash__())][str(self.PreviousMove.__hash__())]
         prevStateUtil = previousValues[UTILITY_INDEX]
 
         # update the previous state utility
-        self.stateUtilityMemory[self.PreviousState.__hash__()][self.PreviousMove.__hash__()][UTILITY_INDEX] = \
+        self.stateUtilityMemory[str(self.PreviousState.__hash__())][str(self.PreviousMove.__hash__())][UTILITY_INDEX] = \
             prevStateUtil + self.alpha * delta
 
         # LAST THING
@@ -296,10 +297,10 @@ class AIPlayer(Player):
     ##
     def addToMemory(self, currentState, compressedState):
         moves = listAllLegalMoves(currentState)
-        compressedHash = compressedState.__hash__()
+        compressedHash = str(compressedState.__hash__())
 
         for move in moves:
-            moveHash = move.__hash__()
+            moveHash = str(move.__hash__())
 
             # if the current state is not in memory, add it to memory,
             # and give the utility the reward value of the states
@@ -466,7 +467,7 @@ class AIPlayer(Player):
     ##
     def getAverageStateUtil(self, currentState):
         averageUtil = 0
-        stateHash = currentState.__hash__()
+        stateHash = str(currentState.__hash__())
         for moveKey in self.stateUtilityMemory[stateHash]:
             utilValue = self.stateUtilityMemory[stateHash][moveKey][UTILITY_INDEX]
             averageUtil += utilValue
@@ -519,7 +520,8 @@ class AIPlayer(Player):
     ##
     def saveMemory(self):
         outputFile = file(self.memoryFileName, "w")
-        cPickle.dump(self.stateUtilityMemory, outputFile)
+        # cPickle.dump(self.stateUtilityMemory, outputFile)
+        json.dump(self.stateUtilityMemory, outputFile)
         outputFile.close()
 
 
@@ -547,8 +549,9 @@ class AIPlayer(Player):
     #   NOTE: !!!!! MODIFIES stateUtilityMemory !!!!!
     ##
     def readMemory(self):
-        inputFile = file("../" + self.memoryFileName, "r")
-        self.stateUtilityMemory = cPickle.load(inputFile)
+        inputFile = file(self.memoryFileName, "r")
+        # self.stateUtilityMemory = cPickle.load(inputFile)
+        self.stateUtilityMemory = json.load(inputFile)
         inputFile.close()
 
 
@@ -558,7 +561,7 @@ class AIPlayer(Player):
     #   (Aka. pick up where it left off).
     ##
     def readAlphaValue(self):
-        inputFile = file("../" + self.alphaValueFileName, "r")
+        inputFile = file(self.alphaValueFileName, "r")
         self.alpha = float(inputFile.read())
         inputFile.close()
 
@@ -568,7 +571,7 @@ class AIPlayer(Player):
     #   (Aka. pick up where it left off).
     ##
     def readEpsilonValue(self):
-        inputFile = file("../" + self.epsilonValueFileName, "r")
+        inputFile = file(self.epsilonValueFileName, "r")
         self.epsilon = float(inputFile.read())
         inputFile.close()
 
@@ -802,10 +805,10 @@ class UnitTests:
     #   tests that two different states hash to different values.
     ##
     def testStateHash(self):
-        print("Init Hash Value: ", self.state.__hash__())
+        print("Init Hash Value: ", str(self.state.__hash__()))
 
         self.state.enemyFoodCount = 1
-        print("Next Hash Value: ", self.state.__hash__())
+        print("Next Hash Value: ", str(self.state.__hash__()))
         temp = set()
         temp.add(self.state)
         print("Added a state to a set")
@@ -853,9 +856,9 @@ class UnitTests:
     ##
     def testDictionaryAndState(self):
         dictThing = {}
-        dictThing[self.state.__hash__()] = 15
+        dictThing[str(self.state.__hash__())] = 15
         self.state.myFoodCount = 1
-        dictThing[self.state.__hash__()] = 10
+        dictThing[str(self.state.__hash__())] = 10
         print("Testing dictionary usage: ", dictThing)
 
     ##
@@ -863,7 +866,7 @@ class UnitTests:
     #   tests that we can write the Memory out to a file.
     ##
     def testMemoryWrite(self):
-        self.player.stateUtilityMemory[self.state.__hash__()] = 10
+        self.player.stateUtilityMemory[str(self.state.__hash__())] = 10
         self.player.saveMemory()
 
     ##
