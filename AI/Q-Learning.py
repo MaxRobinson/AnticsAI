@@ -1,6 +1,6 @@
 __author__ = 'MaxRobinson'
 import random
-import pickle
+import cPickle
 import os
 from Player import *
 from Constants import *
@@ -46,7 +46,7 @@ class AIPlayer(Player):
 
         self.alphaExponentNumber = -0.2
         self.gameNumber = 1
-        self.SaveWindow = 100 # every this many games, save to file.
+        self.SaveWindow = 25  # every this many games, save to file.
 
         self.gamma = .8
         self.alpha = .999
@@ -401,14 +401,14 @@ class AIPlayer(Player):
 
         # list comprehension over the list of ants and getting their generalized location
         # myAntCoords = [self.generalizeCoords(ant.coords) for ant in myInventory.ants]
-        myAntCoords = [ant.coords for ant in myInventory.ants]
+        myAntCoords = [(ant.coords, ant.type, ant.carrying) for ant in myInventory.ants]
 
         for coords in myAntCoords:
             compressedState.antPositionList.append(coords)
 
         # EnemyAntCoords
         # enemyAntCoords = [self.generalizeCoords(ant.coords) for ant in enemyInventory.ants]
-        enemyAntCoords = [ant.coords for ant in enemyInventory.ants]
+        enemyAntCoords = [(ant.coords, ant.type, ant.carrying) for ant in enemyInventory.ants]
 
         # add coords to ant positions
         for coords in enemyAntCoords:
@@ -419,7 +419,7 @@ class AIPlayer(Player):
         compressedState.enemyFoodCount = enemyInventory.foodCount
 
         # check if anything is on my HILL location
-        compressedState.anythingOnHill = self.anythingOnHill(myInventory, enemyInventory)
+        # compressedState.anythingOnHill = self.anythingOnHill(myInventory, enemyInventory)
 
         # check if we have won.
         compressedState.hasWon = self.hasWon(self.playerId, currentState)
@@ -515,11 +515,11 @@ class AIPlayer(Player):
 
     ##
     # saveMemory
-    #   saves the stateUtilityMemory out to a file using pickle serialization
+    #   saves the stateUtilityMemory out to a file using cPickle serialization
     ##
     def saveMemory(self):
         outputFile = file(self.memoryFileName, "w")
-        pickle.dump(self.stateUtilityMemory, outputFile)
+        cPickle.dump(self.stateUtilityMemory, outputFile)
         outputFile.close()
 
 
@@ -548,7 +548,7 @@ class AIPlayer(Player):
     ##
     def readMemory(self):
         inputFile = file("../" + self.memoryFileName, "r")
-        self.stateUtilityMemory = pickle.load(inputFile)
+        self.stateUtilityMemory = cPickle.load(inputFile)
         inputFile.close()
 
 
