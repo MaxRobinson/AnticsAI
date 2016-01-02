@@ -5,6 +5,9 @@ __pycache__/
 #IDE stuff
 *.idea/
 
+# Memory Stuff for AI
+*.txt
+
 # C extensions
 *.so
 
