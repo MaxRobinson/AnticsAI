@@ -1194,12 +1194,29 @@ class Game(object):
         ((self.state.inventories[opponentId].getQueen() == None) or
         (self.state.inventories[opponentId].getAnthill().captureHealth <= 0) or
         (self.state.inventories[playerId].foodCount >= FOOD_GOAL) or
+        (self.boardFullWin(playerId)) or
+        (len(self.state.inventories[playerId].ants) > 97) or
         (self.state.inventories[opponentId].foodCount == 0 and 
             len(self.state.inventories[opponentId].ants) == 1))):
             return True
         else:
             return False
-     
+
+
+    def boardFullWin(self, playerId):
+        opponentId = (playerId + 1) % 2
+
+        #start with a list of all ants that belong to the indicated player(s)
+        allAnts = []
+        for inv in self.state.inventories:
+            allAnts += inv.ants
+
+        if len(allAnts) == 100 and self.state.inventories[playerId].ants > 49:
+            return True
+        else:
+            return False
+
+
     ##
     #pauseForAIMode
     #Description: Will pause the game if set to AI mode until user clicks next or continue
