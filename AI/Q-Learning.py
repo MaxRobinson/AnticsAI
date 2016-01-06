@@ -288,13 +288,32 @@ class AIPlayer(Player):
             delta = self.getReward(self.PreviousState) + self.gamma * self.getAverageStateUtil(compressedState) - \
                     previousQValue
 
-        
-        previousValues = self.stateUtilityMemory[str(self.PreviousState.__hash__())][str(self.PreviousMove.__hash__())]
-        prevStateUtil = previousValues[UTILITY_INDEX]
+            # update the previous State's ET to 1
+            self.stateUtilityMemory[prevStateHash][prevMoveHash][ET_INDEX] = INIT_ET
+
+        # previousValues = self.stateUtilityMemory[str(self.PreviousState.__hash__())][str(self.PreviousMove.__hash__())]
+        # prevStateUtil = previousValues[UTILITY_INDEX]
 
         # update the previous state utility
-        self.stateUtilityMemory[str(self.PreviousState.__hash__())][str(self.PreviousMove.__hash__())][UTILITY_INDEX] = \
-            prevStateUtil + self.alpha * delta
+        # self.stateUtilityMemory[str(self.PreviousState.__hash__())][str(self.PreviousMove.__hash__())][UTILITY_INDEX] = \
+        #     prevStateUtil + self.alpha * delta
+
+        # update all states Utilities using Eligibility Trace.
+        # This will go through each state, and for each state: each action.
+        for state in self.stateUtilityMemory:
+            for action in self.stateUtilityMemory[state]:
+                utilAndEt = self.stateUtilityMemory[state][action]
+                stateReward = utilAndEt[REWARD_INDEX]
+                stateUtil = utilAndEt[UTILITY_INDEX]
+                stateEt = utilAndEt[ET_INDEX]
+
+                # update the Util Value of all states
+                # equation: where s' is my current state
+                # U(s) = U(s) + alpha * eligibility Trace * delta
+                utilAndEt[UTILITY_INDEX] = stateUtil + stateEt * self.alpha * delta
+
+                # update the ET value of all states
+                utilAndEt[ET_INDEX] = stateEt * self.lambdaValue * self.gamma
 
         # LAST THING
         self.PreviousState = compressedState
