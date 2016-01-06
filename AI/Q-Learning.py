@@ -40,6 +40,8 @@ class AIPlayer(Player):
     def __init__(self, inputPlayerId):
         super(AIPlayer,self).__init__(inputPlayerId, "TD-Learning")
 
+        self.isFirstMove = True
+
         # set up file names to read and write too.
         self.memoryFileName = "robinsom16_TD-Learning.txt"
         self.alphaValueFileName = "robinsom16_TD-AlphaValue.txt"
@@ -47,7 +49,7 @@ class AIPlayer(Player):
 
         self.alphaExponentNumber = -0.2
         self.gameNumber = 1
-        self.SaveWindow = 50  # every this many games, save to file.
+        self.SaveWindow = 1  # every this many games, save to file.
 
         self.gamma = .8
         self.alpha = .999
@@ -58,14 +60,16 @@ class AIPlayer(Player):
         self.PreviousState = None
         self.PreviousMove = None
 
+        self.boardHash = None
+
         # key: HASH VALUE of a given compressed State,
         # Value: list [ compressedState, Utility value, EligibilityTrace value]
         self.stateUtilityMemory = {}
 
-        # If we have an existing memory, Load it!!! If not don't do anything.
-        if(os.path.isfile("robinsom16_TD-Learning.txt")):
-            self.readMemory()
-
+        # # If we have an existing memory, Load it!!! If not don't do anything.
+        # if(os.path.isfile("robinsom16_TD-Learning.txt")):
+        #     self.readMemory()
+        #
         # If we have an alpha value, Load it!!! If not don't do anything.
         if(os.path.isfile("robinsom16_TD-AlphaValue.txt")):
             self.readAlphaValue()
@@ -134,6 +138,12 @@ class AIPlayer(Player):
     #   move - The Move to be made
     ##
     def getMove(self, currentState):
+        if self.isFirstMove:
+            self.boardHash = self.hashBoard(currentState)
+            if(os.path.isfile(str(self.boardHash)+".txt")):
+                self.readMemory(str(self.boardHash)+".txt")
+            self.isFirstMove = False
+
 
         # compress state
         compressedState = self.consolidateState(currentState)
@@ -278,7 +288,7 @@ class AIPlayer(Player):
             delta = self.getReward(self.PreviousState) + self.gamma * self.getAverageStateUtil(compressedState) - \
                     previousQValue
 
-
+        
         previousValues = self.stateUtilityMemory[str(self.PreviousState.__hash__())][str(self.PreviousMove.__hash__())]
         prevStateUtil = previousValues[UTILITY_INDEX]
 
@@ -353,10 +363,15 @@ class AIPlayer(Player):
 
         if self.gameNumber % self.SaveWindow == 0:
             # save info
-            self.saveMemory()
+            self.saveMemory(str(self.boardHash)+".txt")
             self.saveAlphaValue()
             self.saveEpsilonValue()
 
+        # dump this memory, to get ready for next game to load in new memory
+        self.stateUtilityMemory = {}
+
+        self.boardHash = None
+        self.isFirstMove = True
         self.gameNumber += 1
 
 
@@ -392,6 +407,9 @@ class AIPlayer(Player):
         # compressedState.myTunnelLocations = [self.generalizeCoords(x.coords) for x in myInventory.getTunnels()]
         compressedState.myTunnelLocations = [x.coords for x in myInventory.getTunnels()]
 
+        # sort so order doesn't matter
+        compressedState.myTunnelLocations.sort()
+
         # add enemy ant hill generalized location
         # compressedState.enemyHillLocation = self.generalizeCoords(enemyInventory.getAnthill().coords)
         compressedState.enemyHillLocation = enemyInventory.getAnthill().coords
@@ -399,6 +417,9 @@ class AIPlayer(Player):
         # list comprehension over the list of possible ENEMY tunnel locations and generalizing their coordinates
         # compressedState.enemyTunnelLocations = [self.generalizeCoords(x.coords) for x in enemyInventory.getTunnels()]
         compressedState.enemyTunnelLocations = [x.coords for x in enemyInventory.getTunnels()]
+
+        # sort so order doesn't matter
+        compressedState.enemyTunnelLocations.sort()
 
         # list comprehension over the list of ants and getting their generalized location
         # myAntCoords = [self.generalizeCoords(ant.coords) for ant in myInventory.ants]
@@ -414,6 +435,9 @@ class AIPlayer(Player):
         # add coords to ant positions
         for coords in enemyAntCoords:
             compressedState.antPositionList.append(coords)
+
+        # sort all of the coords so that order doesn't matter
+        compressedState.antPositionList.sort()
 
         # food
         compressedState.myFoodCount = myInventory.foodCount
@@ -433,7 +457,21 @@ class AIPlayer(Player):
         # return the fully compressed state.
         return compressedState
 
+    def hashBoard(self, currentState):
+        myInventory = currentState.inventories[self.playerId]
+        enemyInventory = currentState.inventories[(self.playerId + 1)%2]
 
+        #get all AntHills and Grass
+        grassAndFood = getConstrList(currentState, None, (ANTHILL, GRASS, FOOD))
+
+        #sort them based on coords
+        grass = sorted(grassAndFood, key=lambda cons: cons.coords)
+
+        constructs = [v.coords for v in grass]
+        myHill = myInventory.getAnthill().coords
+        enemyHill = enemyInventory.getAnthill().coords
+
+        return hash((tuple(constructs), myHill, enemyHill))
 
     ##
     # anythingOnHill
@@ -518,12 +556,21 @@ class AIPlayer(Player):
     # saveMemory
     #   saves the stateUtilityMemory out to a file using cPickle serialization
     ##
-    def saveMemory(self):
-        outputFile = file(self.memoryFileName, "w")
+    # def saveMemory(self):
+    #     outputFile = file(self.memoryFileName, "w")
+    #     # cPickle.dump(self.stateUtilityMemory, outputFile)
+    #     json.dump(self.stateUtilityMemory, outputFile)
+    #     outputFile.close()
+
+    ##
+    # saveMemory
+    #   saves the stateUtilityMemory out to a file using cPickle serialization
+    ##
+    def saveMemory(self, fileName):
+        outputFile = file(fileName, "w")
         # cPickle.dump(self.stateUtilityMemory, outputFile)
         json.dump(self.stateUtilityMemory, outputFile)
         outputFile.close()
-
 
     ##
     # saveAlphaValue
@@ -548,12 +595,23 @@ class AIPlayer(Player):
     #
     #   NOTE: !!!!! MODIFIES stateUtilityMemory !!!!!
     ##
-    def readMemory(self):
-        inputFile = file(self.memoryFileName, "r")
+    # def readMemory(self):
+    #     inputFile = file(self.memoryFileName, "r")
+    #     # self.stateUtilityMemory = cPickle.load(inputFile)
+    #     self.stateUtilityMemory = json.load(inputFile)
+    #     inputFile.close()
+
+    ##
+    # readMemory
+    #   reads from an input file and sets the value of the AI's "Memory" to what was in the output file
+    #
+    #   NOTE: !!!!! MODIFIES stateUtilityMemory !!!!!
+    ##
+    def readMemory(self, fileName):
+        inputFile = file(fileName, "r")
         # self.stateUtilityMemory = cPickle.load(inputFile)
         self.stateUtilityMemory = json.load(inputFile)
         inputFile.close()
-
 
     ##
     # readAlphaValue
