@@ -71,11 +71,11 @@ class AIPlayer(Player):
         #     self.readMemory()
         #
         # If we have an alpha value, Load it!!! If not don't do anything.
-        if(os.path.isfile("robinsom16_TD-AlphaValue.txt")):
+        if(os.path.isfile("../robinsom16_TD-AlphaValue.txt")):
             self.readAlphaValue()
 
         # If we have an alpha value, Load it!!! If not don't do anything.
-        if(os.path.isfile("robinsom16_TD-EpsilonValue.txt")):
+        if(os.path.isfile("../robinsom16_TD-EpsilonValue.txt")):
             self.readEpsilonValue()
 
     ##
@@ -638,7 +638,7 @@ class AIPlayer(Player):
     #   (Aka. pick up where it left off).
     ##
     def readAlphaValue(self):
-        inputFile = file(self.alphaValueFileName, "r")
+        inputFile = file("../" + self.alphaValueFileName, "r")
         self.alpha = float(inputFile.read())
         inputFile.close()
 
@@ -648,7 +648,7 @@ class AIPlayer(Player):
     #   (Aka. pick up where it left off).
     ##
     def readEpsilonValue(self):
-        inputFile = file(self.epsilonValueFileName, "r")
+        inputFile = file("../" + self.epsilonValueFileName, "r")
         self.epsilon = float(inputFile.read())
         inputFile.close()
 
